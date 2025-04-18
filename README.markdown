@@ -1,7 +1,6 @@
-```markdown
 # ModbusTCPSimulator
 
-A Python-based Modbus TCP server simulator designed to emulate devices like the Carlo Gavazzi EM340 energy meter. It supports multiple concurrent simulations, each configured via YAML files, with dynamic register updates, energy accumulation, and a curses-based terminal UI for real-time monitoring.
+A Python-based Modbus TCP server simulator designed to emulate devices like energy meters and inverters. It supports multiple concurrent simulations, each configured via YAML files, with dynamic register updates, energy accumulation, and a curses-based terminal UI for real-time monitoring.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -9,7 +8,6 @@ A Python-based Modbus TCP server simulator designed to emulate devices like the 
 
 - **Multiple Simulations**: Run multiple Modbus TCP servers concurrently, each with its own IP, port, slave ID, and register configuration.
 - **Dynamic Registers**: Supports randomization, mathematical expressions (e.g., power = voltage * current * power factor), and energy accumulation (kWh).
-- **Persistence**: Saves accumulated values (e.g., kWh) to JSON files, unique per configuration.
 - **Terminal UI**: Curses-based interface to monitor simulations and register values in real-time.
 - **Compatibility**: Works with Modbus clients like Modbus Poll for testing.
 - **Robust Logging**: Detailed logs for debugging and diagnostics.
@@ -23,7 +21,7 @@ A Python-based Modbus TCP server simulator designed to emulate devices like the 
 ### Steps
 1. Clone the repository:
    ```bash
-   git clone https://github.com/[YourUsername]/ModbusTCPSimulator.git
+   git clone https://github.com/Ahmed-Insolar/ModbusTCPSimulator.git
    cd ModbusTCPSimulator
    ```
 
@@ -82,7 +80,6 @@ The simulator uses YAML files to define registers and simulation parameters. Key
   - `randomize`: Enable randomization (optional, requires `fluctuation`).
   - `expression`: Mathematical expression for computed values (optional).
   - `accumulate`: Enable accumulation (e.g., kWh, requires `source`).
-  - `persist`: Save value to JSON (optional, requires `accumulate`).
   - `writable`: Allow Modbus writes (optional, requires `variable_name`).
 
 Example (`config_example.yaml`):
@@ -142,4 +139,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 - Inspired by the need to simulate Modbus TCP devices for testing.
 - Built with [pymodbus](https://pymodbus.readthedocs.io/), [PyYAML](https://pyyaml.org/), and [windows-curses](https://github.com/zephyrproject-rtos/windows-curses).
-```
