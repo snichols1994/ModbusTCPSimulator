@@ -1,0 +1,171 @@
+defaults:
+  ip: "127.0.0.1"
+  port: 502
+  slave_id: 1
+registers:
+  # AC Side - Phase L1
+  - address: 0
+    name: ac_voltage_l1
+    description: AC Voltage L1-N (V)
+    type: uint16
+    scale: 1.0
+    base_value: 230
+    randomize: true
+    fluctuation: 0.03
+  - address: 1
+    name: ac_current_l1
+    description: AC Current L1 (A)
+    type: uint16
+    scale: 10.0
+    base_value: 50
+    randomize: true
+    fluctuation: 0.05
+  - address: 2
+    name: power_factor_l1
+    description: Power Factor L1 (%)
+    type: uint16
+    scale: 1.0
+    base_value: 95
+    randomize: true
+    fluctuation: 0.02
+  - address: 3
+    name: ac_power_l1
+    description: AC Active Power L1 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l1 * ac_current_l1 * (power_factor_l1 / 100) / 100) / 10"
+  - address: 4
+    name: ac_apparent_power_l1
+    description: AC Apparent Power L1 (kVA)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l1 * ac_current_l1 / 100) / 10"
+  - address: 5
+    name: ac_reactive_power_l1
+    description: AC Reactive Power L1 (kVAr)
+    type: uint16
+    scale: 1000.0
+    expression: "math.sqrt((ac_apparent_power_l1 * ac_apparent_power_l1) - (ac_power_l1 * ac_power_l1))"
+
+  # AC Side - Phase L2
+  - address: 6
+    name: ac_voltage_l2
+    description: AC Voltage L2-N (V)
+    type: uint16
+    scale: 1.0
+    base_value: 230
+    randomize: true
+    fluctuation: 0.03
+  - address: 7
+    name: ac_current_l2
+    description: AC Current L2 (A)
+    type: uint16
+    scale: 10.0
+    base_value: 50
+    randomize: true
+    fluctuation: 0.05
+  - address: 8
+    name: power_factor_l2
+    description: Power Factor L2 (%)
+    type: uint16
+    scale: 1.0
+    base_value: 95
+    randomize: true
+    fluctuation: 0.02
+  - address: 9
+    name: ac_power_l2
+    description: AC Active Power L2 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l2 * ac_current_l2 * (power_factor_l2 / 100) / 100) / 10"
+  - address: 10
+    name: ac_apparent_power_l2
+    description: AC Apparent Power L2 (kVA)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l2 * ac_current_l2 / 100) / 10"
+  - address: 11
+    name: ac_reactive_power_l2
+    description: AC Reactive Power L2 (kVAr)
+    type: uint16
+    scale: 1000.0
+    expression: "math.sqrt((ac_apparent_power_l2 * ac_apparent_power_l2) - (ac_power_l2 * ac_power_l2))"
+
+  # AC Side - Phase L3
+  - address: 12
+    name: ac_voltage_l3
+    description: AC Voltage L3-N (V)
+    type: uint16
+    scale: 1.0
+    base_value: 230
+    randomize: true
+    fluctuation: 0.03
+  - address: 13
+    name: ac_current_l3
+    description: AC Current L3 (A)
+    type: uint16
+    scale: 10.0
+    base_value: 50
+    randomize: true
+    fluctuation: 0.05
+  - address: 14
+    name: power_factor_l3
+    description: Power Factor L3 (%)
+    type: uint16
+    scale: 1.0
+    base_value: 95
+    randomize: true
+    fluctuation: 0.02
+  - address: 15
+    name: ac_power_l3
+    description: AC Active Power L3 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l3 * ac_current_l3 * (power_factor_l3 / 100) / 100) / 10"
+  - address: 16
+    name: ac_apparent_power_l3
+    description: AC Apparent Power L3 (kVA)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l3 * ac_current_l3 / 100) / 10"
+  - address: 17
+    name: ac_reactive_power_l3
+    description: AC Reactive Power L3 (kVAr)
+    type: uint16
+    scale: 1000.0
+    expression: "math.sqrt((ac_apparent_power_l3 * ac_apparent_power_l3) - (ac_power_l3 * ac_power_l3))"
+
+  # AC Side - Totals
+  - address: 18
+    name: total_ac_power
+    description: Total AC Active Power (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_power_l1 + ac_power_l2 + ac_power_l3)"
+  - address: 19
+    name: total_ac_apparent_power
+    description: Total AC Apparent Power (kVA)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_apparent_power_l1 + ac_apparent_power_l2 + ac_apparent_power_l3)"
+  - address: 20
+    name: total_ac_reactive_power
+    description: Total AC Reactive Power (kVAr)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_reactive_power_l1 + ac_reactive_power_l2 + ac_reactive_power_l3)"
+  - address: 21
+    name: total_power_factor
+    description: Total Power Factor (%)
+    type: uint16
+    scale: 1.0
+    expression: "min(100, max(1, (total_ac_power * 100) / max(1, total_ac_apparent_power)))"
+  - address: 22
+    name: total_kwh
+    description: Total Energy (kWh)
+    type: uint32
+    scale: 1000.0
+    base_value: 0
+    accumulate: true
+    source: total_ac_power
+    persist: true

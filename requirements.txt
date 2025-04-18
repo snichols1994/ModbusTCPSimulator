@@ -1,0 +1,5 @@
+```
+pymodbus>=3.6.4
+pyyaml>=6.0
+windows-curses>=2.3.1; platform_system == "Windows"
+```

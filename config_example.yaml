@@ -1,0 +1,44 @@
+defaults:
+  ip: "127.0.0.1"
+  port: 502
+  slave_id: 1
+registers:
+  - address: 99
+    name: voltage_l1_n1
+    description: Voltage L1-N (V)
+    type: uint16
+    scale: 10.0
+    base_value: 230
+    randomize: true
+    fluctuation: 0.05
+  - address: 2
+    name: current_l1
+    description: Current L1 (A)
+    type: uint16
+    scale: 10.0
+    base_value: 5
+    randomize: true
+    fluctuation: 0.1
+  - address: 4
+    name: pf_l1
+    description: Power Factor L1 (%)
+    type: uint16
+    scale: 1.0
+    base_value: 95
+    randomize: true
+    fluctuation: 0.02
+  - address: 7
+    name: power_l1
+    description: Active Power L1 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "voltage_l1_n1 * current_l1 * (pf_l1 / 100.0) / 10"
+  - address: 16
+    name: total_kwh_l1
+    description: Total Energy L1 (kWh)
+    type: uint32
+    scale: 1000.0
+    base_value: 0
+    accumulate: true
+    source: power_l1
+    persist: true

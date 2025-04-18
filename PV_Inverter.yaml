@@ -1,0 +1,175 @@
+defaults:
+  ip: "127.0.0.1"
+  port: 502
+  slave_id: 3
+registers:
+  # Hidden Environmental Inputs
+  - address: 1
+    name: irradiance
+    description: Solar Irradiance (W/m²)
+    type: uint16
+    scale: 1.0
+    base_value: 1000
+    randomize: true
+    fluctuation: 0.05
+    hidden: true
+  - address: 2
+    name: temperature
+    description: Module Temperature (°C)
+    type: uint16
+    scale: 1.0
+    base_value: 25
+    randomize: false
+    hidden: true
+
+  # MPPT1 (DC Side)
+  - address: 3
+    name: dc_voltage_mppt1
+    description: DC Voltage MPPT1 (V)
+    type: uint16
+    scale: 1.0
+    expression: "min(600, max(400, 550 * min(1, irradiance / 1000)))"
+  - address: 4
+    name: dc_current_mppt1
+    description: DC Current MPPT1 (A)
+    type: uint16
+    scale: 10.0
+    expression: "min(32, max(0, min(12.76 * min(1, irradiance / 1000) * setpoint / 100 * 1000 / max(400, dc_voltage_mppt1), 32)))"
+  - address: 5
+    name: dc_power_mppt1
+    description: DC Power MPPT1 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "min(1400, dc_voltage_mppt1 * dc_current_mppt1 / 1000)"
+
+  # MPPT2 (DC Side)
+  - address: 6
+    name: dc_voltage_mppt2
+    description: DC Voltage MPPT2 (V)
+    type: uint16
+    scale: 10.0
+    expression: "min(600, max(400, 540 * min(1, irradiance / 1000)))"
+  - address: 7
+    name: dc_current_mppt2
+    description: DC Current MPPT2 (A)
+    type: uint16
+    scale: 10.0
+    expression: "min(32, max(0, min(12.76 * min(1, irradiance / 1000) * setpoint / 100 * 1000 / max(400, dc_voltage_mppt2), 32)))"
+  - address: 8
+    name: dc_power_mppt2
+    description: DC Power MPPT2 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "min(1400, dc_voltage_mppt2 * dc_current_mppt2 / 1000)"
+
+  # Total DC Power
+  - address: 9
+    name: total_dc_power
+    description: Total DC Power (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(dc_power_mppt1 + dc_power_mppt2)"
+
+  # Power Setpoint (Writable)
+  - address: 10
+    name: power_setpoint
+    description: AC Power Setpoint (%)
+    type: uint16
+    scale: 1.0
+    base_value: 100
+    writable: true
+    variable_name: setpoint
+    min_value: 0
+    max_value: 100
+    randomize: false
+
+  # AC Side - Phase L1
+  - address: 12
+    name: ac_voltage_l1
+    description: AC Voltage L1-N (V)
+    type: uint16
+    scale: 1.0
+    base_value: 230
+    randomize: true
+    fluctuation: 0.03
+  - address: 13
+    name: ac_current_l1
+    description: AC Current L1 (A)
+    type: uint16
+    scale: 10.0
+    expression: "min(40, (total_dc_power * 100 * 0.98 / (3 * ac_voltage_l1 * 0.95)) * 10)"
+  - address: 14
+    name: ac_power_l1
+    description: AC Active Power L1 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l1 * ac_current_l1 * 0.95 / 100) / 10"
+
+  # AC Side - Phase L2
+  - address: 15
+    name: ac_voltage_l2
+    description: AC Voltage L2-N (V)
+    type: uint16
+    scale: 1.0
+    base_value: 230
+    randomize: true
+    fluctuation: 0.03
+  - address: 16
+    name: ac_current_l2
+    description: AC Current L2 (A)
+    type: uint16
+    scale: 10.0
+    expression: "min(40, (total_dc_power * 100 * 0.98 / (3 * ac_voltage_l2 * 0.95)) * 10)"
+  - address: 17
+    name: ac_power_l2
+    description: AC Active Power L2 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l2 * ac_current_l2 * 0.95 / 100) / 10"
+
+  # AC Side - Phase L3
+  - address: 18
+    name: ac_voltage_l3
+    description: AC Voltage L3-N (V)
+    type: uint16
+    scale: 1.0
+    base_value: 230
+    randomize: true
+    fluctuation: 0.03
+  - address: 19
+    name: ac_current_l3
+    description: AC Current L3 (A)
+    type: uint16
+    scale: 10.0
+    expression: "min(40, (total_dc_power * 100 * 0.98 / (3 * ac_voltage_l3 * 0.95)) * 10)"
+  - address: 20
+    name: ac_power_l3
+    description: AC Active Power L3 (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_voltage_l3 * ac_current_l3 * 0.95 / 100) / 10"
+
+  # AC Side - Totals
+  - address: 21
+    name: total_ac_power
+    description: Total AC Active Power (kW)
+    type: uint16
+    scale: 1000.0
+    expression: "(ac_power_l1 + ac_power_l2 + ac_power_l3)"
+  - address: 22
+    name: power_factor
+    description: Power Factor (%)
+    type: uint16
+    scale: 1.0
+    base_value: 95
+    randomize: true
+    fluctuation: 0.02
+  - address: 23
+    name: total_kwh
+    description: Total Energy (kWh)
+    type: uint32
+    scale: 1000.0
+    base_value: 0
+    accumulate: true
+    source: total_ac_power
+    persist: true
