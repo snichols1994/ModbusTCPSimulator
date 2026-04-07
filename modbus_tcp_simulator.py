@@ -28,7 +28,7 @@ Usage:
 5. Connect via Modbus Poll to test the server.
 
 License: MIT
-Repository: https://github.com/[YourUsername]/ModbusTCPSimulator
+Repository: https://github.com/snichols1994/ModbusTCPSimulator
 """
 
 import threading
@@ -42,11 +42,14 @@ import curses
 import asyncio
 import json
 import os
+import struct
 from typing import Dict, Any, List
 from pymodbus.server import ModbusTcpServer
-from pymodbus.datastore import ModbusSequentialDataBlock, ModbusSlaveContext, ModbusServerContext
-from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
+from pymodbus.datastore import (
+    ModbusSequentialDataBlock,
+    ModbusDeviceContext,
+    ModbusServerContext,
+)
 
 # --- Configuration Constants ---
 VERSION = "1.0"
@@ -273,29 +276,30 @@ def encode_value(value: float, reg_type: str, scale: float) -> List[int]:
         List[int]: Encoded register values.
     """
     try:
-        scaled_value = float(value) * float(scale)
-    except (ValueError, TypeError):
-        log.warning(f"Invalid value '{value}' for encoding, using 0")
-        scaled_value = 0.0
-    builder = BinaryPayloadBuilder(byteorder=Endian.BIG, wordorder=Endian.BIG)
-    try:
-        if reg_type == "uint16":
-            builder.add_16bit_uint(max(0, min(int(round(scaled_value)), 65535)))
-        elif reg_type == "uint32":
-            builder.add_32bit_uint(max(0, min(int(round(scaled_value)), 0xFFFFFFFF)))
-        elif reg_type == "int16":
-            builder.add_16bit_int(max(-32768, min(int(round(scaled_value)), 32767)))
-        elif reg_type == "int32":
-            builder.add_32bit_int(max(-0x80000000, min(int(round(scaled_value)), 0x7FFFFFFF)))
-        elif reg_type == "float32":
-            builder.add_32bit_float(scaled_value)
-        else:
-            log.warning(f"Unknown type '{reg_type}' during encoding")
-            return [0]
-        return builder.to_registers()
-    except Exception as e:
-        log.error(f"Error encoding {value} (scaled: {scaled_value}) as {reg_type}: {e}")
-        return [0] * (2 if reg_type in ["uint32", "int32", "float32"] else 1)
+        v = float(value) * float(scale)
+    except Exception:
+        v = 0.0
+
+    if reg_type == "uint16":
+        v = max(0, min(int(round(v)), 0xFFFF))
+        return list(struct.unpack(">H", struct.pack(">H", v)))
+
+    if reg_type == "int16":
+        v = max(-0x8000, min(int(round(v)), 0x7FFF))
+        return list(struct.unpack(">H", struct.pack(">h", v)))
+
+    if reg_type == "uint32":
+        v = max(0, min(int(round(v)), 0xFFFFFFFF))
+        return list(struct.unpack(">2H", struct.pack(">I", v)))
+
+    if reg_type == "int32":
+        v = max(-0x80000000, min(int(round(v)), 0x7FFFFFFF))
+        return list(struct.unpack(">2H", struct.pack(">i", v)))
+
+    if reg_type == "float32":
+        return list(struct.unpack(">2H", struct.pack(">f", float(v))))
+
+    return [0]
 
 def decode_value(words: List[int], reg_type: str, scale: float) -> float:
     """
@@ -309,38 +313,31 @@ def decode_value(words: List[int], reg_type: str, scale: float) -> float:
     Returns:
         float: Decoded and scaled value, or 0.0 on error.
     """
-    if not words:
+    if not words or scale == 0:
         return 0.0
-    if scale == 0:
-        log.warning(f"Zero scale for decoding {reg_type}, using 1.0")
-        scale = 1.0
+
     try:
-        decoder = BinaryPayloadDecoder.fromRegisters(words, byteorder=Endian.BIG, wordorder=Endian.BIG)
         if reg_type == "uint16":
-            decoded_raw = decoder.decode_16bit_uint()
-        elif reg_type == "uint32":
-            if len(words) >= 2:
-                decoded_raw = decoder.decode_32bit_uint()
-            else:
-                return 0.0
+            raw = struct.unpack(">H", struct.pack(">H", words[0]))[0]
+
         elif reg_type == "int16":
-            decoded_raw = decoder.decode_16bit_int()
-        elif reg_type == "int32":
-            if len(words) >= 2:
-                decoded_raw = decoder.decode_32bit_int()
-            else:
-                return 0.0
-        elif reg_type == "float32":
-            if len(words) >= 2:
-                decoded_raw = decoder.decode_32bit_float()
-            else:
-                return 0.0
+            raw = struct.unpack(">h", struct.pack(">H", words[0]))[0]
+
+        elif reg_type == "uint32" and len(words) >= 2:
+            raw = struct.unpack(">I", struct.pack(">2H", *words[:2]))[0]
+
+        elif reg_type == "int32" and len(words) >= 2:
+            raw = struct.unpack(">i", struct.pack(">2H", *words[:2]))[0]
+
+        elif reg_type == "float32" and len(words) >= 2:
+            raw = struct.unpack(">f", struct.pack(">2H", *words[:2]))[0]
+
         else:
-            log.warning(f"Unknown type '{reg_type}' during decoding")
             return 0.0
-        return float(decoded_raw) / float(scale)
-    except Exception as e:
-        log.error(f"Error decoding {words} as {reg_type} with scale {scale}: {e}")
+
+        return raw / float(scale)
+
+    except Exception:
         return 0.0
 
 # --- Simulation Instance ---
@@ -379,14 +376,18 @@ class SimulationInstance:
 
         # Initialize Modbus data block
         self.block = ModbusSequentialDataBlock(0, [0] * self.max_registers)
-        self.context = ModbusSlaveContext(
+        self.context = ModbusDeviceContext(
             hr=self.block,
             ir=self.block,
             di=ModbusSequentialDataBlock(0, [0] * self.max_registers),
-            co=ModbusSequentialDataBlock(0, [0] * self.max_registers),
-            zero_mode=True
+            co=ModbusSequentialDataBlock(0, [0] * self.max_registers)#,
+            # zero_mode=True
         )
-        self.server_context = ModbusServerContext(slaves={self.slave_id: self.context}, single=False)
+
+        self.server_context = ModbusServerContext(
+            devices={self.slave_id: self.context},
+            single=False
+        )
         self.modbus_server = None
 
         # Initialize register values
@@ -550,9 +551,17 @@ class SimulationInstance:
         async def serve():
             try:
                 self.log.info(f"{server_id} - Starting Modbus TCP server")
-                self.modbus_server = ModbusTcpServer(context=self.server_context, address=address)
+                # self.modbus_server = ModbusTcpServer(context=self.server_context, address=address)
+                
+                async with ModbusTcpServer(
+                    context=self.server_context,
+                    address=address
+                ) as server:
+                    self.modbus_server = server
+                    await server.serve_forever()
+
                 self.log.info(f"{server_id} - Modbus TCP server running")
-                await self.modbus_server.serve_forever()
+                # await self.modbus_server.serve_forever()
             except asyncio.CancelledError:
                 self.log.info(f"{server_id} - Server task cancelled")
             except OSError as e:
